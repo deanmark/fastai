@@ -360,6 +360,8 @@ class ImageData(ModelData):
 
     @staticmethod
     def get_ds(fn, trn, val, tfms, test=None, **kwargs):
+        trn = ImageData.partial_train_classes(trn, kwargs.pop('partial_train_classes', None))
+        trn = ImageData.max_train_per_class(trn, kwargs.pop('max_train_per_class', None))
         res = [
             fn(trn[0], trn[1], tfms[0], **kwargs), # train
             fn(val[0], val[1], tfms[1], **kwargs), # val
@@ -379,10 +381,34 @@ class ImageData(ModelData):
         else: res += [None,None]
         return res
 
+    @staticmethod
+    def partial_train_classes(trn, partial_train_classes):
+        if partial_train_classes is None:
+            return trn
+        idx = []
+        for i in partial_train_classes:
+            idx_i = np.where(trn[1] == i)[0]
+            idx.append(idx_i)
+        idx = np.concatenate(idx)
+        return [trn[0][i] for i in idx], trn[1][idx]
+
+    @staticmethod
+    def max_train_per_class(trn, max_train_per_class):
+        if max_train_per_class is None:
+            return trn
+        idx = []
+        for i in range(len(trn[2])):
+            idx_i = np.where(trn[1] == i)[0]
+            if max_train_per_class < len(idx_i):
+                idx_i = np.random.choice(idx_i, size=max_train_per_class, replace=False)
+            idx.append(idx_i)
+        idx = np.concatenate(idx)
+        return [trn[0][i] for i in idx], trn[1][idx]
+
 
 class ImageClassifierData(ImageData):
     @classmethod
-    def from_arrays(cls, path, trn, val, bs=64, tfms=(None,None), classes=None, num_workers=4, test=None):
+    def from_arrays(cls, path, trn, val, bs=64, tfms=(None,None), classes=None, num_workers=4, test=None, **kwargs):
         """ Read in images and their labels given as numpy arrays
 
         Arguments:
@@ -399,11 +425,11 @@ class ImageClassifierData(ImageData):
         Returns:
             ImageClassifierData
         """
-        datasets = cls.get_ds(ArraysIndexDataset, trn, val, tfms, test=test)
+        datasets = cls.get_ds(ArraysIndexDataset, trn, val, tfms, test=test, **kwargs)
         return cls(path, datasets, bs, num_workers, classes=classes)
 
     @classmethod
-    def from_paths(cls, path, bs=64, tfms=(None,None), trn_name='train', val_name='valid', test_name=None, test_with_labels=False, num_workers=8):
+    def from_paths(cls, path, bs=64, tfms=(None,None), trn_name='train', val_name='valid', test_name=None, test_with_labels=False, num_workers=8, **kwargs):
         """ Read in images and their labels given as sub-folder names
 
         Arguments:
@@ -423,12 +449,12 @@ class ImageClassifierData(ImageData):
         if test_name:
             test = folder_source(path, test_name) if test_with_labels else read_dir(path, test_name)
         else: test = None
-        datasets = cls.get_ds(FilesIndexArrayDataset, trn, val, tfms, path=path, test=test)
+        datasets = cls.get_ds(FilesIndexArrayDataset, trn, val, tfms, path=path, test=test, **kwargs)
         return cls(path, datasets, bs, num_workers, classes=trn[2])
 
     @classmethod
     def from_csv(cls, path, folder, csv_fname, bs=64, tfms=(None,None),
-               val_idxs=None, suffix='', test_name=None, continuous=False, skip_header=True, num_workers=8):
+               val_idxs=None, suffix='', test_name=None, continuous=False, skip_header=True, num_workers=8, **kwargs):
         """ Read in images and their labels given as a CSV file.
 
         This method should be used when training image labels are given in an CSV file as opposed to
@@ -456,11 +482,11 @@ class ImageClassifierData(ImageData):
         assert not (os.path.isabs(folder)), "folder needs to be a relative path"
         fnames,y,classes = csv_source(folder, csv_fname, skip_header, suffix, continuous=continuous)
         return cls.from_names_and_array(path, fnames, y, classes, val_idxs, test_name,
-                num_workers=num_workers, suffix=suffix, tfms=tfms, bs=bs, continuous=continuous)
+                num_workers=num_workers, suffix=suffix, tfms=tfms, bs=bs, continuous=continuous, **kwargs)
 
     @classmethod
     def from_names_and_array(cls, path, fnames,y,classes, val_idxs=None, test_name=None,
-            num_workers=8, suffix='', tfms=(None,None), bs=64, continuous=False):
+            num_workers=8, suffix='', tfms=(None,None), bs=64, continuous=False, **kwargs):
         val_idxs = get_cv_idxs(len(fnames)) if val_idxs is None else val_idxs
         ((val_fnames,trn_fnames),(val_y,trn_y)) = split_by_idx(val_idxs, np.array(fnames), y)
 
@@ -469,7 +495,7 @@ class ImageClassifierData(ImageData):
         else:
             f = FilesIndexArrayDataset if len(trn_y.shape)==1 else FilesNhotArrayDataset
         datasets = cls.get_ds(f, (trn_fnames,trn_y), (val_fnames,val_y), tfms,
-                               path=path, test=test_fnames)
+                               path=path, test=test_fnames, **kwargs)
         return cls(path, datasets, bs, num_workers, classes=classes)
 
 def split_by_idx(idxs, *a):
