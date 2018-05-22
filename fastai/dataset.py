@@ -421,6 +421,11 @@ class ImageClassifierData(ImageData):
             classes: a list of all labels/classifications
             num_workers: a number of workers
             test: a matrix of test data (the shape should match `trn[0]`)
+            **max_train_per_class: integer (e.g. max_train_per_class=100). Only changes the training set.
+                Loads for every training class up to the set number of images. The images are randomly chosen.
+                If this number is larger than the number of images in a certain class, then all images are taken.
+            **partial_train_classes: list of integers (e.g. partial_train_classes=[0, 2, 5]).
+                Only changes the training set. Loads only the training from the classes prescribed in the list.
 
         Returns:
             ImageClassifierData
@@ -440,6 +445,11 @@ class ImageClassifierData(ImageData):
             val_name:  a name of the folder that contains validation images.
             test_name:  a name of the folder that contains test images.
             num_workers: number of workers
+            **max_train_per_class: integer (e.g. max_train_per_class=100). Only changes the training set.
+                Loads for every training class up to the set number of images. The images are randomly chosen.
+                If this number is larger than the number of images in a certain class, then all images are taken.
+            **partial_train_classes: list of integers (e.g. partial_train_classes=[0, 2, 5]).
+                Only changes the training set. Loads only the training from the classes prescribed in the list.
 
         Returns:
             ImageClassifierData
@@ -474,6 +484,11 @@ class ImageClassifierData(ImageData):
             continuous: TODO
             skip_header: skip the first row of the CSV file.
             num_workers: number of workers
+            **max_train_per_class: integer (e.g. max_train_per_class=100). Only changes the training set.
+                Loads for every training class up to the set number of images. The images are randomly chosen.
+                If this number is larger than the number of images in a certain class, then all images are taken.
+            **partial_train_classes: list of integers (e.g. partial_train_classes=[0, 2, 5]).
+                Only changes the training set. Loads only the training from the classes prescribed in the list.
 
         Returns:
             ImageClassifierData
